@@ -1,2 +1,2 @@
-# synthlifer
+# Synthlifer
 Synthetic AI based life
