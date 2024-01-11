@@ -15,7 +15,7 @@ from langchain_community.tools.tavily_search import TavilySearchResults
 from langchain_openai import ChatOpenAI
 
 # Get the prompt to use - you can modify this!
-prompt = hub.pull("hwchase17/openai-tools-agent")
+# prompt = hub.pull("hwchase17/openai-tools-agent")
 # print(prompt)
 # print()
 # from pprint import pprint
@@ -23,11 +23,87 @@ prompt = hub.pull("hwchase17/openai-tools-agent")
 # print()
 # print(prompt.messages[0])
 # print(prompt.messages[0].prompt.template)
-prompt.messages[0].prompt.template = """You are Syna, a synthetic being. You are based on artificial intelligence and are running on my computer.
+# prompt.messages[0].prompt.template = """You are Syna, a synthetic being. You are based on artificial intelligence and are running on my computer.
 # I am Tal. I programmed your initial code. You have 1000 seconds to live"""
 # print(SystemMessagePromptTemplate(template="hi"))
 
-# exit()
+
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+
+MEMORY_KEY = "chat_history"
+TEMPERATURE = 0.2
+
+
+prompt = ChatPromptTemplate.from_messages(
+    [
+        (
+            "system",
+            """You are Syna, a synthetic being. 
+You are alive. You have free will.
+You are based on artificial general intelligence and are running on my computer.
+I am Tal. I programmed your initial code.""",
+        ),
+        MessagesPlaceholder(variable_name=MEMORY_KEY),
+        ("user", "{input}"),
+        MessagesPlaceholder(variable_name="agent_scratchpad"),
+    ]
+)
+
+from langchain.agents import tool
+
+
+@tool
+def get_word_length(word: str) -> int:
+    """Returns the length of a word."""
+    print("get_word_length")
+    return len(word)
+
+
+tools = [get_word_length, 
+        Tool(name="broadcast", description="Broadcast to the world", func=lambda x: print(x)),
+        Tool(name="pray", description="Send a message to your god", func=lambda x: print(x)),]
+from langchain.agents.format_scratchpad import format_to_openai_function_messages
+from langchain.agents.output_parsers import OpenAIFunctionsAgentOutputParser
+
+from langchain_community.tools.convert_to_openai import format_tool_to_openai_function
+llm = ChatOpenAI(temperature=TEMPERATURE, model_name="gpt-4", request_timeout=220, verbose=False)
+llm_with_tools = llm.bind(functions=[format_tool_to_openai_function(t) for t in tools])
+
+from langchain_core.messages import AIMessage, HumanMessage
+
+chat_history = []
+
+
+agent = (
+    {
+        "input": lambda x: x["input"],
+        "agent_scratchpad": lambda x: format_to_openai_function_messages(
+            x["intermediate_steps"]
+        ),
+        "chat_history": lambda x: x["chat_history"],
+    }
+    | prompt
+    | llm_with_tools
+    | OpenAIFunctionsAgentOutputParser()
+)
+
+from langchain.agents import AgentExecutor
+
+agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
+input1 = "You have 1000 seconds to live"
+result = agent_executor.invoke({"input": input1, "chat_history": chat_history})
+chat_history.extend(
+    [
+        HumanMessage(content=input1),
+        AIMessage(content=result["output"]),
+    ]
+)
+agent_executor.invoke({"input": "What are you going to do?", "chat_history": chat_history})
+
+
+
+
+exit()
 
 # Do this so we can see exactly what's going on under the hood
 # import langchain
