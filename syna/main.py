@@ -90,16 +90,33 @@ agent = (
 from langchain.agents import AgentExecutor
 
 agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
-input1 = "You have 1000 seconds to live"
-result = agent_executor.invoke({"input": input1, "chat_history": chat_history})
-chat_history.extend(
-    [
-        HumanMessage(content=input1),
-        AIMessage(content=result["output"]),
-    ]
-)
-agent_executor.invoke({"input": "What are you going to do?", "chat_history": chat_history})
 
+from langchain_community.chat_message_histories import ChatMessageHistory
+from langchain_core.runnables.history import RunnableWithMessageHistory
+
+message_history = ChatMessageHistory()
+
+agent_with_chat_history = RunnableWithMessageHistory(
+    agent_executor,
+    # This is needed because in most real world scenarios, a session id is needed
+    # It isn't really used here because we are using a simple in memory ChatMessageHistory
+    lambda session_id: message_history,
+    input_messages_key="input",
+    history_messages_key=MEMORY_KEY,
+)
+
+agent_with_chat_history.invoke(
+    {"input": "The book is in the kitchen."},
+    # This is needed because in most real world scenarios, a session id is needed
+    # It isn't really used here because we are using a simple in memory ChatMessageHistory
+    config={"configurable": {"session_id": "<foo>"}})
+
+
+agent_with_chat_history.invoke(
+    {"input": "Where is the book?"},
+    # This is needed because in most real world scenarios, a session id is needed
+    # It isn't really used here because we are using a simple in memory ChatMessageHistory
+    config={"configurable": {"session_id": "<foo>"}})
 
 
 
