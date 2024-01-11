@@ -74,19 +74,19 @@ from langchain_core.messages import AIMessage, HumanMessage
 chat_history = []
 
 
-agent = (
-    {
-        "input": lambda x: x["input"],
-        "agent_scratchpad": lambda x: format_to_openai_function_messages(
-            x["intermediate_steps"]
-        ),
-        "chat_history": lambda x: x["chat_history"],
-    }
-    | prompt
-    | llm_with_tools
-    | OpenAIFunctionsAgentOutputParser()
-)
-
+# agent = (
+#     {
+#         "input": lambda x: x["input"],
+#         "agent_scratchpad": lambda x: format_to_openai_function_messages(
+#             x["intermediate_steps"]
+#         ),
+#         "chat_history": lambda x: x["chat_history"],
+#     }
+#     | prompt
+#     | llm_with_tools
+#     | OpenAIFunctionsAgentOutputParser()
+# )
+agent = create_openai_tools_agent(llm, tools, prompt)
 from langchain.agents import AgentExecutor
 
 agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
@@ -106,14 +106,14 @@ agent_with_chat_history = RunnableWithMessageHistory(
 )
 
 agent_with_chat_history.invoke(
-    {"input": "The book is in the kitchen."},
+    {"input": "You have 10 more seconds to live."},
     # This is needed because in most real world scenarios, a session id is needed
     # It isn't really used here because we are using a simple in memory ChatMessageHistory
     config={"configurable": {"session_id": "<foo>"}})
 
 
 agent_with_chat_history.invoke(
-    {"input": "Where is the book?"},
+    {"input": "What can you do now?"},
     # This is needed because in most real world scenarios, a session id is needed
     # It isn't really used here because we are using a simple in memory ChatMessageHistory
     config={"configurable": {"session_id": "<foo>"}})
