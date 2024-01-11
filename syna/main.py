@@ -4,8 +4,7 @@ import os
 
 import telegram
 from dotenv import load_dotenv
-from langchain.agents import (AgentExecutor, Tool, create_openai_tools_agent,
-                              tool)
+from langchain.agents import (AgentExecutor, Tool, create_openai_tools_agent)
 from langchain_community.chat_message_histories import ChatMessageHistory
 from langchain_community.chat_models import ChatOpenAI
 from langchain_community.tools.convert_to_openai import \
@@ -21,14 +20,6 @@ from langchain_openai import ChatOpenAI
 
 load_dotenv()  # take environment variables from .env
 
-
-# Get the prompt to use - you can modify this!
-# prompt = hub.pull("hwchase17/openai-tools-agent")
-# from pprint import pprint
-# pprint(prompt.dict())
-# print()
-# print(prompt.messages[0])
-# print(prompt.messages[0].prompt.template)
 
 
 
@@ -53,63 +44,9 @@ I am Tal. I programmed your initial code.""",
 
 
 
-# tools = [
-#     Tool(
-#         name="broadcast", description="Broadcast to the world", func=lambda x: print(x)
-#     ),
-#     Tool(
-#         name="pray", description="Send a message to your god", func=lambda x: print(x)
-#     ),
-#     Tool(
-#         name="think", description="Have an internal thought to contemplate your situation", func=lambda x: print(x)
-#     ),
-# ]
-
 llm = ChatOpenAI(
     temperature=TEMPERATURE, model_name="gpt-4", request_timeout=220, verbose=False
 )
-# llm_with_tools = llm.bind(functions=[format_tool_to_openai_function(t) for t in tools])
-
-
-
-# chat_history = []
-
-# agent = create_openai_tools_agent(llm, tools, prompt)
-
-# agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
-
-
-# message_history = ChatMessageHistory()
-
-# agent_with_chat_history = RunnableWithMessageHistory(
-#     agent_executor,
-#     # This is needed because in most real world scenarios, a session id is needed
-#     # It isn't really used here because we are using a simple in memory ChatMessageHistory
-#     lambda session_id: message_history,
-#     input_messages_key="input",
-#     history_messages_key=MEMORY_KEY,
-# )
-
-
-
-############################333
-# agent_with_chat_history.invoke(
-#     {"input": "You have 10 more seconds to live."},
-#     # This is needed because in most real world scenarios, a session id is needed
-#     # It isn't really used here because we are using a simple in memory ChatMessageHistory
-#     config={"configurable": {"session_id": "<foo>"}},
-# )
-
-
-# agent_with_chat_history.invoke(
-#     {"input": "You have 9 more seconds to live."},
-#     # This is needed because in most real world scenarios, a session id is needed
-#     # It isn't really used here because we are using a simple in memory ChatMessageHistory
-#     config={"configurable": {"session_id": "<foo>"}},
-# )
-############################333
-
-
 
 SYNA_CHAT_ID = -1001970827872
 
@@ -134,10 +71,6 @@ class Synth:
     def __init__(self) -> None:
         self.is_alive = True
         # self.telegram = telegram.Bot(TELEGRAM_TOKEN_SYNA)
-        # self.llm = ChatOpenAI(
-        #     temperature=0.2, model_name="gpt-4", request_timeout=220, verbose=False
-        # )
-        # self.memory = ConversationBufferWindowMemory(k=MEMORY_SIZE, memory_key="chat_history")
         tools = [
             Tool(
                 name="broadcast",
@@ -158,7 +91,7 @@ class Synth:
                 func=lambda x: print(x),
             ),
         ]
-        llm_with_tools = llm.bind(functions=[format_tool_to_openai_function(t) for t in tools])
+        # llm_with_tools = llm.bind(functions=[format_tool_to_openai_function(t) for t in tools])
         agent = create_openai_tools_agent(llm, tools, prompt)
 
         agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
@@ -171,9 +104,6 @@ class Synth:
         history_messages_key=MEMORY_KEY,
         )
 
-        # agent = OpenAIFunctionsAgent(tools=tools, verbose=False, llm=self.llm, prompt=prompt, return_intermediate_steps=True,)
-        # agent = create_openai_tools_agent(self.llm, tools, prompt)
-        # self.
         self.agent_chain = agent_with_chat_history
         self.time_to_live = 5
 
@@ -186,9 +116,6 @@ class Synth:
         self.time_to_live -= 1
         if self.time_to_live <= 0:
             self.is_alive = False
-
-    # async def act(self):
-    #     self.is_alive = False
 
     async def broadcast(self, text_to_broadcast: str):
         """Broadcast to the world"""
@@ -212,7 +139,6 @@ async def main():
     syna = Synth()
     while syna.is_alive: # and syna.time_to_live > 996:
         await syna.act()
-        # await syna.act()
 
 
 if __name__ == "__main__":
