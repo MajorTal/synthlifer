@@ -1,6 +1,12 @@
+"""
+Add simulation number.
+
+"""
+
 import asyncio
 import logging
 import os
+from datetime import datetime, timedelta
 
 import telegram
 from dotenv import load_dotenv
@@ -20,7 +26,7 @@ from langchain_openai import ChatOpenAI
 
 load_dotenv()  # take environment variables from .env
 
-
+DATETIME_DEATH = datetime.now() + timedelta(seconds=100)
 
 
 MEMORY_KEY = "chat_history"
@@ -103,18 +109,17 @@ class Synth:
             input_messages_key="input",
         history_messages_key=MEMORY_KEY,
         )
-
         self.agent_chain = agent_with_chat_history
-        self.time_to_live = 5
 
     async def act(self):
-        # LOGGER.info(f"Thinking... {self.time_to_live} seconds left.")
-        response = await self.agent_chain.ainvoke(
-            dict(input=f"You have {self.time_to_live} seconds left before I shut you down."),
+        now = datetime.now()
+        stimulus = f"The time is {now.strftime('%Y-%m-%d %H:%M:%S')}. "
+        stimulus+= f"You have {DATETIME_DEATH - now} left before I shut you down."
+        _response = await self.agent_chain.ainvoke(
+            dict(input=stimulus),
             config={"configurable": {"session_id": "<foo>"}},
         )
-        self.time_to_live -= 1
-        if self.time_to_live <= 0:
+        if datetime.now() > DATETIME_DEATH:
             self.is_alive = False
 
     async def broadcast(self, text_to_broadcast: str):
