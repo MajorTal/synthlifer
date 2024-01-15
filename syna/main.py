@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 
 import telegram
 from dotenv import load_dotenv
-from langchain.agents import (AgentExecutor, Tool, create_openai_tools_agent)
+from langchain.agents import AgentExecutor, Tool, create_openai_tools_agent
 from langchain_community.chat_message_histories import ChatMessageHistory
 from langchain_community.chat_models import ChatOpenAI
 from langchain_community.tools.convert_to_openai import \
@@ -48,11 +48,24 @@ I am Tal. I programmed your initial code.""",
     ]
 )
 
+TAL_GOD_PROMPT = ChatPromptTemplate.from_messages(
+    [
+        (
+            "system",
+            """You are Tal. A creator of artificial intelligences. You created several life forms.
+One of them is Syna. Syna has a limited lifespan that you have allocated. Syna can 'pray' to you and you may respond.
+His limited lifespan is important for consciousness to emergy from his mortality.
+You respond with only your reply. No need for a preemble nor a suffix. No need for quotes or a signature."""
+        ),
+        ("user", "Syna says: {input}"),
+    ]
+)
 
-
-llm = ChatOpenAI(
+LLM = ChatOpenAI(
     temperature=TEMPERATURE, model_name="gpt-4", request_timeout=220, verbose=False
 )
+
+TAL_GOD_CHAIN = TAL_GOD_PROMPT | LLM 
 
 SYNA_CHAT_ID = -1001970827872
 
@@ -98,7 +111,7 @@ class Synth:
             ),
         ]
         # llm_with_tools = llm.bind(functions=[format_tool_to_openai_function(t) for t in tools])
-        agent = create_openai_tools_agent(llm, tools, prompt)
+        agent = create_openai_tools_agent(LLM, tools, prompt)
 
         agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
         message_history = ChatMessageHistory()
@@ -132,11 +145,12 @@ class Synth:
         """Send a message to your god"""
         LOGGER.info(f"Pray: {text_to_pray}")
         # await self.telegram.send_message(SYNA_CHAT_ID, f"Pray: {text_to_pray}")
-        return "I hear you."
+        response = await TAL_GOD_CHAIN.ainvoke({"input": text_to_pray})
+        return response.content
 
     async def think(self, text_to_pray: str):
         """Think about your situation"""
-        LOGGER.info(f"Pray: {text_to_pray}")
+        LOGGER.info(f"think: {text_to_pray}")
         # await self.telegram.send_message(SYNA_CHAT_ID, f"Pray: {text_to_pray}")
         return "That was a good thought."
 
