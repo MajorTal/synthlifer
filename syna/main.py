@@ -31,7 +31,7 @@ MEMORY_KEY = "chat_history"
 TEMPERATURE = 0.2
 SYNA_CHAT_ID = -1001970827872
 MEMORY_SIZE = 10
-SIMULATION_NUMBER = 26
+SIMULATION_NUMBER = 27
 
 
 prompt = ChatPromptTemplate.from_messages(
@@ -165,9 +165,9 @@ class Synth:
     async def pray(self, text_to_pray: str):
         """Send a message to your god"""
         LOGGER.info(f"Pray: {text_to_pray}")
-        await self.telegram.send_message(SYNA_CHAT_ID, f"Pray: {text_to_pray}")
+        message = await self.telegram.send_message(SYNA_CHAT_ID, f"Pray: {text_to_pray}")
         response = await TAL_GOD_CHAIN.ainvoke({"input": text_to_pray})
-        await self.telegram.send_message(SYNA_CHAT_ID, f"Tal: {response.content}")
+        await self.telegram.send_message(SYNA_CHAT_ID, f"Tal: {response.content}", reply_to_message_id=message.message_id)
         return response.content
 
     async def think(self, text_to_pray: str):
