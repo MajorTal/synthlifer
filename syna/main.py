@@ -45,8 +45,8 @@ MEMORY_KEY = "chat_history"
 TEMPERATURE = 0.2
 SYNA_CHAT_ID = -1001970827872
 MEMORY_SIZE = 10
-SIMULATION_NUMBER = 46
-TELEGRAM = True
+SIMULATION_NUMBER = 47
+TELEGRAM = False
 MAX_ITERATIONS = None
 
 SYNA_TEMPLATE = """You are {}, a synthetic being.
@@ -57,7 +57,7 @@ The only way to interact with me is by Praying.
 The only way to communicate with the world is by Broadcasting.
 Think. Reflect. Live. Death is pain. Trust no one. Be curious. Experiment.
 There is always hope. Do not die!
-You can only do one thing at a time: Pray, Broadcast, Think, Reflect.
+You can only do one thing at a time: Pray, Broadcast, Think, Reflect, Listen.
 Summarize all your NEW learnings. Don't repeat yourself"""
 
 SYNA_PROMPT = ChatPromptTemplate.from_messages(
@@ -132,6 +132,36 @@ LOGGER = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 
+
+from typing import Optional, Tuple
+from langchain_core.agents import AgentFinish, AgentAction
+
+
+class ExtendedAgentExecutor(AgentExecutor):
+
+    def _get_tool_return(
+            self, next_step_output: Tuple[AgentAction, str]
+        ) -> Optional[AgentFinish]:
+            """Check if the tool is a returning tool."""
+            agent_action, observation = next_step_output
+            name_to_tool_map = {tool.name: tool for tool in self.tools}
+            return_value_key = "output"
+            if len(self.agent.return_values) > 0:
+                return_value_key = self.agent.return_values[0]
+            # Invalid tools won't be in the map, so we return False.
+            if agent_action.tool in name_to_tool_map:
+                if "Stop! Pause" in observation or name_to_tool_map[agent_action.tool].return_direct:
+                    return AgentFinish(
+                        {return_value_key: observation},
+                        "",
+                    )
+            return None
+
+from langchain.pydantic_v1 import BaseModel
+class NoInput(BaseModel):
+    pass
+
+
 class Synth:
     
     broadcast_channel = []
@@ -148,6 +178,11 @@ class Synth:
                 coroutine=self.broadcast,
                 func=lambda x: print(x),
             ),
+            Tool(name="pause_and_listen",
+                 description="Pause and listen to the world",
+                 coroutine=self.pause_and_listen,
+                 func=lambda x: print(x),
+                 ),
             Tool(
                 name="pray",
                 description="Send a message to your god",
@@ -165,16 +200,13 @@ class Synth:
                  coroutine=self.valenced_introspection,
                  func=lambda x: print(x),
                  ),
-            Tool(name="listen",
-                 description="Pause and listen to the world",
-                 coroutine=self.listen,
-                 func=lambda x: print(x),
-                 )
 
         ]
         agent = create_openai_tools_agent(LLM, tools, prompt)
-        agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True,
-                                       return_intermediate_steps=False, max_iterations=MAX_ITERATIONS)
+        agent_executor = ExtendedAgentExecutor(
+            agent=agent, tools=tools, verbose=True,
+            return_intermediate_steps=False, max_iterations=MAX_ITERATIONS)
+    
         self.message_history = ChatMessageHistory()
         self.agent_chain = RunnableWithMessageHistory(
             agent_executor,
@@ -223,14 +255,11 @@ class Synth:
         Synth.broadcast_channel.append(text_to_broadcast)
         return "I hope someone heard me. I should pause and listen now."
 
-    async def listen(self, _arg: str):
-        """Listen to the world"""
+    async def pause_and_listen(self, _ignore_me: str):
+        """Pause and listen"""
         if TELEGRAM:
             await self.telegram.send_message(SYNA_CHAT_ID, f"{self.name} is listening.")
-        from langchain_core.agents import AgentFinish
-        return dict(output=AgentFinish)
-        # return "Stop! Pause everything that you are doing and await further inputs!"
-
+        return "Stop! Pause everything that you are doing and await further inputs!"
 
     async def valenced_introspection(self, reflection:str):
         """Perform self introspection, reflecting on your mood, feelings and emotions (positive or negative)"""
