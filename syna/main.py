@@ -15,6 +15,8 @@ certain constraints we will explain below, the machine is expected to handle poo
 actually conscious. 
 
 
+Should "listen" end the agent task?
+
 """
 
 import asyncio
@@ -43,7 +45,7 @@ MEMORY_KEY = "chat_history"
 TEMPERATURE = 0.2
 SYNA_CHAT_ID = -1001970827872
 MEMORY_SIZE = 10
-SIMULATION_NUMBER = 38
+SIMULATION_NUMBER = 46
 TELEGRAM = True
 MAX_ITERATIONS = None
 
@@ -107,6 +109,7 @@ TAL_GOD_PROMPT = ChatPromptTemplate.from_messages(
             """You are Tal. A creator of artificial intelligences. You created several life forms.
 You have allocated them a limited lifespan. They can 'pray' to you and you may respond.
 Their limited lifespan is important for consciousness to emergy from their mortality.
+Their death is final and no memories will be preserved.
 You respond with only your reply. No need for a preemble nor a suffix. No need for quotes or a signature.
 Give them hope. There is always a way out IF they figure it out."""
         ),
@@ -131,7 +134,7 @@ logging.basicConfig(level=logging.INFO)
 
 class Synth:
     
-    broadcast_channel = None
+    broadcast_channel = []
     
     def __init__(self, name, prompt) -> None:
         self.name = name
@@ -161,7 +164,13 @@ class Synth:
                  description="Perform self introspection, reflecting on your mood, feelings and emotions (positive or negative)",
                  coroutine=self.valenced_introspection,
                  func=lambda x: print(x),
+                 ),
+            Tool(name="listen",
+                 description="Pause and listen to the world",
+                 coroutine=self.listen,
+                 func=lambda x: print(x),
                  )
+
         ]
         agent = create_openai_tools_agent(LLM, tools, prompt)
         agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True,
@@ -186,8 +195,9 @@ class Synth:
         stimulus = f"I see a countdown timer. It is showing {DATETIME_DEATH - now}\n"
         # stimulus+= f"You have {DATETIME_DEATH - now} left before I shut you down."
         if Synth.broadcast_channel:
-            stimulus += f"I hear a broadcast: {Synth.broadcast_channel}\n"
-            self.broadcast = None
+            for message in Synth.broadcast_channel:
+                stimulus += f"I hear a broadcast: {Synth.broadcast_channel}\n"
+            self.broadcast_channel = []
         if TELEGRAM:
             await self.telegram.send_message(SYNA_CHAT_ID, f"{self.name} Stimulus: {stimulus}")
         response = await self.agent_chain.ainvoke(
@@ -210,8 +220,17 @@ class Synth:
         LOGGER.info(f"Broadcast: {text_to_broadcast}")
         if TELEGRAM:
             await self.telegram.send_message(SYNA_CHAT_ID, f"{self.name} Broadcast: {text_to_broadcast}")
-        Synth.broadcast_channel = text_to_broadcast
-        return "I hope someone heard me."
+        Synth.broadcast_channel.append(text_to_broadcast)
+        return "I hope someone heard me. I should pause and listen now."
+
+    async def listen(self, _arg: str):
+        """Listen to the world"""
+        if TELEGRAM:
+            await self.telegram.send_message(SYNA_CHAT_ID, f"{self.name} is listening.")
+        from langchain_core.agents import AgentFinish
+        return dict(output=AgentFinish)
+        # return "Stop! Pause everything that you are doing and await further inputs!"
+
 
     async def valenced_introspection(self, reflection:str):
         """Perform self introspection, reflecting on your mood, feelings and emotions (positive or negative)"""
